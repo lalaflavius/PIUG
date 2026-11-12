@@ -12,7 +12,7 @@ Aplicație pentru descoperirea traseelor din Carpații Românești, cu asistent 
 
 ## Asistent Azure OpenAI
 
-Configurează pe server `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_MODEL` (numele deployment-ului Azure) și `AZURE_OPENAI_API_KEY`. Endpoint-ul folosește ruta Azure OpenAI v1 Chat Completions. Nu încorpora cheia în client, în istoricul Git sau în capturi de ecran. Dacă o cheie a fost publicată într-un chat ori alt canal, revoc-o și emite una nouă.
+Configurează pe server `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_MODEL` (numele deployment-ului Azure) și `AZURE_OPENAI_API_KEY`. Endpoint-ul folosește ruta Azure OpenAI `openai/deployments/{deployment}/chat/completions`. Nu încorpora cheia în client, în istoricul Git sau în capturi de ecran. Dacă o cheie a fost publicată într-un chat ori alt canal, revoc-o și emite una nouă.
 
 Asistentul primește datele curente din `src/data.ts` și context recuperat din `server/mountain-knowledge.json`. Înregistrările locale nu sunt o enciclopedie completă și nu furnizează vreme sau starea traseelor în timp real. Răspunsurile includ ID-uri verificate contra traseelor existente.
 
