@@ -1,50 +1,86 @@
-import { Link, Route, Routes } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, NavLink, Route, Routes, useNavigate, useParams } from 'react-router-dom';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Check, ChevronDown, Compass, Facebook, Instagram, Leaf, Menu, Moon, Search, Sun, X, Youtube } from 'lucide-react';
 import Assistant from './Assistant';
 import ContactPage from './ContactPage';
-import { mountainTrails } from './data';
+import { difficultyOrder, mountainTrails, normalize, Trail, Difficulty, Experience } from './data';
 
-function HomePage() {
-  return (
-    <>
-      <section className="card">
-        <h2>Trasee recomandate</h2>
-        <ul className="trail-list">
-          {mountainTrails.map((trail) => (
-            <li key={trail.id}>
-              <h3>{trail.name}</h3>
-              <p>
-                <strong>{trail.mountainRange}</strong> · dificultate {trail.difficulty} · aproximativ{' '}
-                {trail.durationHours}h
-              </p>
-              <p>{trail.summary}</p>
-              <small>ID traseu: {trail.id}</small>
-            </li>
-          ))}
-        </ul>
-      </section>
-      <Assistant />
-    </>
-  );
+const navItems = [['/', 'Acasă'], ['/trasee', 'Trasee'], ['/recomandari', 'Recomandări'], ['/asistent', 'Asistent'], ['/despre', 'Despre']] as const;
+
+function Header({ dark, setDark }: { dark: boolean; setDark: (value: boolean) => void }) {
+  const [open, setOpen] = useState(false);
+  return <header className="site-header">
+    <div className="header-inner">
+      <Link to="/" className="brand" onClick={() => setOpen(false)}><span className="brand-mark"><Compass size={21} /></span><span>Ghid <em>Montan</em></span></Link>
+      <button className="mobile-toggle icon-button" aria-label="Deschide meniul" onClick={() => setOpen(!open)}><Menu /></button>
+      <nav className={open ? 'main-nav open' : 'main-nav'}>{navItems.map(([path, label]) => <NavLink key={path} to={path} end={path === '/'} onClick={() => setOpen(false)}>{label}</NavLink>)}</nav>
+      <button className="theme-toggle icon-button" aria-label={dark ? 'Activează tema luminoasă' : 'Activează tema întunecată'} onClick={() => setDark(!dark)}>{dark ? <Sun size={18} /> : <Moon size={18} />}<span>{dark ? 'Luminos' : 'Întunecat'}</span></button>
+    </div>
+  </header>;
 }
 
-export default function App() {
-  return (
-    <div className="layout">
-      <header>
-        <h1>Ghid Montan</h1>
-        <p>Alege-ți următoarea potecă în Carpații Românești.</p>
-        <nav>
-          <Link to="/">Acasă</Link>
-          <Link to="/contact">Contact</Link>
-        </nav>
-      </header>
+function Footer() {
+  return <footer className="site-footer"><div className="footer-grid"><div><Link to="/" className="brand footer-brand"><span className="brand-mark"><Compass size={20} /></span><span>Ghid <em>Montan</em></span></Link><p>Un ghid digital pentru alegeri mai bune și drumeții mai conștiente în Carpații Românești.</p></div><div><h4>Descoperă</h4><Link to="/trasee">Toate traseele</Link><Link to="/recomandari">Găsește traseul</Link><Link to="/asistent">Asistent montan</Link></div><div><h4>Proiect</h4><Link to="/despre">Despre proiect</Link><Link to="/despre#contact">Contact</Link><span className="muted">Date orientative · verifică mereu condițiile</span></div></div><div className="footer-bottom"><span>© 2026 Ghid Montan · Proiect universitar</span><div className="socials"><a href="https://instagram.com" aria-label="Instagram"><Instagram size={17} /></a><a href="https://facebook.com" aria-label="Facebook"><Facebook size={17} /></a><a href="https://youtube.com" aria-label="YouTube"><Youtube size={17} /></a></div></div></footer>;
+}
 
-      <main>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/contact" element={<ContactPage />} />
-        </Routes>
-      </main>
-    </div>
-  );
+function FloatingTools({ help, setHelp }: { help: boolean; setHelp: (v: boolean) => void }) {
+  return <><button className="floating help-button" aria-label="Ajutor" onClick={() => setHelp(!help)}>?</button>{help && <div className="help-popover"><button className="popover-close" onClick={() => setHelp(false)} aria-label="Închide"><X size={15} /></button><strong>Ai nevoie de ajutor?</strong><p>Folosește filtrele pentru a compara trasee sau încearcă asistentul cu o descriere naturală.</p><Link to="/recomandari" onClick={() => setHelp(false)}>Începe recomandarea →</Link></div>}<button className="floating top-button" aria-label="Sus" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}><ArrowUp size={18} /></button></>;
+}
+
+function TrailCard({ trail, featured = false }: { trail: Trail; featured?: boolean }) {
+  return <article className={featured ? 'trail-card featured' : 'trail-card'}><Link to={`/trasee/${trail.slug}`} className="trail-image"><img src={trail.images[0]} alt={trail.name} /><span className={`difficulty ${trail.difficulty}`}>{trail.difficulty}</span></Link><div className="trail-card-body"><div className="eyebrow">{trail.mountainRange} <span>·</span> {trail.routeType}</div><h3><Link to={`/trasee/${trail.slug}`}>{trail.name}</Link></h3><p>{trail.summary}</p><div className="trail-meta"><span>{trail.distanceKm} km</span><span>{trail.durationLabel}</span><span>+{trail.elevationGain} m</span></div><Link className="text-link" to={`/trasee/${trail.slug}`}>Vezi traseul <ArrowRight size={15} /></Link></div></article>;
+}
+
+function HomePage() {
+  const navigate = useNavigate();
+  return <><main><section className="hero"><div className="hero-copy"><div className="eyebrow light"><span className="eyebrow-dot" /> GHID DIGITAL · CARPAȚII ROMÂNEȘTI</div><h1>Munții nu se cuceresc.<br /><em>Se descoperă.</em></h1><p>Alege traseul care se potrivește ritmului tău, experienței tale și felului în care vrei să simți muntele.</p><div className="hero-actions"><button className="button primary" onClick={() => navigate('/recomandari')}>Găsește traseul potrivit <ArrowRight size={17} /></button><button className="button ghost-light" onClick={() => navigate('/trasee')}>Explorează traseele</button></div><div className="hero-note"><span className="avatar-stack"><span>M</span><span>A</span><span>D</span></span><span>Recomandări bazate pe date locale și alegeri reale.</span></div></div><div className="hero-stats"><div><strong>10</strong><span>trasee selectate</span></div><div><strong>8</strong><span>masive montane</span></div><div><strong>100%</strong><span>fără trasee inventate</span></div></div></section><section className="section"><div className="section-heading"><div><span className="kicker">INSPIRAȚIE PENTRU URMĂTOAREA TURĂ</span><h2>Trasee care merită<br /><em>să le simți.</em></h2></div><Link className="text-link" to="/trasee">Vezi toate traseele <ArrowRight size={15} /></Link></div><div className="trail-grid featured-grid">{mountainTrails.slice(0, 3).map((trail) => <TrailCard key={trail.id} trail={trail} featured />)}</div></section><section className="experience-section"><div className="section-heading"><div><span className="kicker">ALEGE ÎN FUNCȚIE DE TINE</span><h2>Unde te afli pe<br /><em>potecă?</em></h2></div><p className="section-intro">Nu există un traseu perfect pentru toată lumea. Există traseul potrivit pentru tine, acum.</p></div><div className="experience-grid">{[['01','Începător','Primii pași în natură, fără grabă.','ușor','/trasee?difficulty=ușor'],['02','Intermediar','Mai multă altitudine, mai multă aventură.','mediu','/trasee?difficulty=mediu'],['03','Avansat','Creste lungi și provocări pe măsură.','dificil','/trasee?difficulty=dificil']].map(([no, title, text, level, href]) => <Link className="experience-card" to={href} key={level}><span>{no}</span><div><h3>{title}</h3><p>{text}</p></div><ArrowUp className="experience-arrow" size={18} /></Link>)}</div></section><section className="how-section"><div className="how-image"><img src={mountainTrails[5].images[0]} alt="Peisaj montan" /></div><div className="how-copy"><span className="kicker">SIMPLU, CLAR, PENTRU TINE</span><h2>Găsește-ți<br /><em>direcția.</em></h2><p>Am adunat informațiile esențiale într-un singur loc, ca tu să poți lua decizii bune înainte de a porni la drum.</p><div className="steps"><div><b>01</b><span><strong>Spune-ne ce cauți</strong><small>Experiență, timp și peisajul preferat.</small></span></div><div><b>02</b><span><strong>Compară opțiunile</strong><small>Date tehnice, echipament și avertismente.</small></span></div><div><b>03</b><span><strong>Pleacă informat</strong><small>Verifică vremea și condițiile locale înainte de plecare.</small></span></div></div><Link className="text-link" to="/recomandari">Începe acum <ArrowRight size={15} /></Link></div></section><section className="assistant-promo"><div><span className="kicker">AI · SAU MAI BINE, UN GHID LA ÎNDEMÂNĂ</span><h2>Descrie drumeția.<br /><em>Găsește direcția.</em></h2><p>Scrie-ne în cuvintele tale ce îți dorești. Modul demonstrativ analizează criteriile și îți arată trasee reale din baza noastră.</p><Link className="button dark" to="/asistent">Vorbește cu asistentul <ArrowRight size={17} /></Link></div><div className="assistant-orbit"><Leaf size={72} strokeWidth={1} /><span>spune<br />ce vrei<br />să simți</span></div></section></main></>;
+}
+
+function ExplorePage() {
+  const params = new URLSearchParams(location.search);
+  const [query, setQuery] = useState(''); const [difficulty, setDifficulty] = useState(params.get('difficulty') || 'toate'); const [range, setRange] = useState('toate'); const [maxDuration, setMaxDuration] = useState('toate'); const [sort, setSort] = useState('relevanță');
+  const results = useMemo(() => mountainTrails.filter((t) => { const hay = normalize(`${t.name} ${t.mountainRange} ${t.summary} ${t.landscape.join(' ')}`); return (!query || hay.includes(normalize(query))) && (difficulty === 'toate' || t.difficulty === difficulty) && (range === 'toate' || t.mountainRange === range) && (maxDuration === 'toate' || (maxDuration === 'scurt' ? t.durationHours <= 2 : maxDuration === 'zi' ? t.durationHours <= 6 : t.durationHours > 6)); }).sort((a, b) => sort === 'durată' ? a.durationHours - b.durationHours : sort === 'dificultate' ? difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty] : 0), [query, difficulty, range, maxDuration, sort]);
+  const reset = () => { setQuery(''); setDifficulty('toate'); setRange('toate'); setMaxDuration('toate'); };
+  return <main className="page-shell"><div className="page-heading"><div><span className="kicker">EXPLOREAZĂ LIBER</span><h1>Trasee pentru<br /><em>următoarea ta zi.</em></h1></div><p>Filtrează după ceea ce contează pentru tine. Datele sunt orientative și trebuie verificate înainte de plecare.</p></div><div className="explore-layout"><aside className="filters"><div className="filter-title"><span>Filtrează rezultate</span><button onClick={reset}>Resetează</button></div><label className="search-field"><Search size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Caută traseu, masiv..." /></label><Filter label="Dificultate" value={difficulty} onChange={setDifficulty} options={['toate','ușor','mediu','dificil']} /><Filter label="Masiv montan" value={range} onChange={setRange} options={['toate', ...Array.from(new Set(mountainTrails.map((t) => t.mountainRange)))]} /><Filter label="Durată" value={maxDuration} onChange={setMaxDuration} options={['toate','scurt','zi','lung']} labels={['Orice durată','Până la 2 ore','Până la 6 ore','Peste 6 ore']} /></aside><section className="results"><div className="results-bar"><strong>{results.length} trasee găsite</strong><label>Sortează <select value={sort} onChange={(e) => setSort(e.target.value)}><option>relevanță</option><option>durată</option><option>dificultate</option></select><ChevronDown size={14} /></label></div>{results.length ? <div className="trail-grid">{results.map((trail) => <TrailCard key={trail.id} trail={trail} />)}</div> : <div className="empty-state"><Search size={32} /><h3>Niciun traseu nu corespunde</h3><p>Încearcă să elimini un filtru sau caută un alt termen.</p><button className="button dark" onClick={reset}>Resetează filtrele</button></div>}</section></div></main>;
+}
+
+function Filter({ label, value, onChange, options, labels }: { label: string; value: string; onChange: (v: string) => void; options: string[]; labels?: string[] }) { return <label className="filter-select"><span>{label}</span><select value={value} onChange={(e) => onChange(e.target.value)}>{options.map((o, i) => <option value={o} key={o}>{labels?.[i] || (o === 'toate' ? 'Toate' : o)}</option>)}</select><ChevronDown size={15} /></label>; }
+
+function DetailPage() {
+  const { slug } = useParams(); const trail = mountainTrails.find((t) => t.slug === slug); const [selected, setSelected] = useState(0);
+  if (!trail) return <main className="page-shell"><div className="empty-state"><h2>Traseul nu a fost găsit</h2><Link className="button dark" to="/trasee">Înapoi la trasee</Link></div></main>;
+  return <main className="detail-page"><Link className="back-link" to="/trasee"><ArrowLeft size={16} /> Înapoi la trasee</Link><div className="detail-hero"><div><span className="eyebrow">{trail.mountainRange} · {trail.routeType}</span><h1>{trail.name}</h1><p>{trail.summary}</p><div className="detail-tags"><span className={`difficulty ${trail.difficulty}`}>{trail.difficulty}</span><span>{trail.experience} recomandat</span></div></div><div className="detail-hero-image"><img src={trail.images[selected]} alt={trail.name} /></div></div><div className="gallery"><div className="gallery-thumbs">{trail.images.map((src, i) => <button key={src} className={selected === i ? 'selected' : ''} onClick={() => setSelected(i)}><img src={src} alt={`${trail.name} - imaginea ${i + 1}`} /></button>)}</div><button className="gallery-open" onClick={() => setSelected((selected + 1) % trail.images.length)}>Next <ArrowRight size={16} /></button></div><div className="detail-content"><div className="detail-main"><span className="kicker">DESPRE TRASEU</span><h2>O zi în care<br /><em>muntele vorbește.</em></h2><p>{trail.description}</p><h3>Puncte de interes</h3><div className="interest-list">{trail.pointsOfInterest.map((point) => <span key={point}><Check size={15} />{point}</span>)}</div>{trail.video && <div className="video-wrap"><iframe src={trail.video} title={`Video despre ${trail.name}`} allowFullScreen /></div>}</div><aside className="detail-sidebar"><div className="technical-card"><h3>Date tehnice</h3><div className="technical-table"><span>Lungime <b>{trail.distanceKm} km</b></span><span>Durată estimată <b>{trail.durationLabel}</b></span><span>Diferență nivel <b>+{trail.elevationGain} m</b></span><span>Altitudine maximă <b>{trail.maxAltitude} m</b></span><span>Dificultate <b>{trail.difficulty}</b></span><span>Tip traseu <b>{trail.routeType}</b></span><span>Punct de plecare <b>{trail.start}</b></span></div></div><div className="safety-card"><h3>De reținut</h3><ul>{trail.warnings.map((w) => <li key={w}>{w}</li>)}</ul><small>Durata și dificultatea sunt estimări. Verifică vremea, marcajele și accesul actual înainte de plecare.</small></div><div className="equipment-card"><h3>Echipament recomandat</h3><ul>{trail.equipment.map((e) => <li key={e}><Check size={14} />{e}</li>)}</ul></div></aside></div></main>;
+}
+
+function RecommendationsPage() {
+  const [step, setStep] = useState(1); const [experience, setExperience] = useState<Experience | ''>(''); const [time, setTime] = useState(''); const [landscape, setLandscape] = useState(''); const [difficulty, setDifficulty] = useState<Difficulty | ''>('');
+  const results = useMemo(() => mountainTrails.map((trail) => ({
+    trail,
+    score: (experience && trail.experience === experience ? 3 : 0)
+      + (time && ((time === '2' && trail.durationHours <= 2) || (time === '4' && trail.durationHours <= 4) || (time === '6' && trail.durationHours <= 6) || (time === 'long' && trail.durationHours > 6)) ? 3 : 0)
+      + (landscape && trail.landscape.includes(landscape) ? 2 : 0)
+      + (difficulty && trail.difficulty === difficulty ? 2 : 0),
+  })).filter((x) => x.score > 0).sort((a, b) => b.score - a.score).slice(0, 4), [experience, time, landscape, difficulty]);
+  return <main className="page-shell recommendation-page"><div className="page-heading"><div><span className="kicker">RECOMANDARE PERSONALIZATĂ</span><h1>Traseul tău începe<br /><em>cu o alegere.</em></h1></div><p>Răspunde la câteva întrebări. Nu există răspunsuri greșite, doar potriviri mai bune.</p></div><div className="recommendation-layout"><div className="wizard"><div className="wizard-progress">{[1,2,3,4].map((n) => <span className={step >= n ? 'active' : ''} key={n}>{n}</span>)}</div>{step === 1 && <ChoiceStep title="Câtă experiență ai?" options={['începător','intermediar','avansat']} value={experience} setValue={(v) => setExperience(v as Experience)} onNext={() => setStep(2)} />}{step === 2 && <ChoiceStep title="Cât timp ai la dispoziție?" options={['2','4','6','long']} labels={['Maximum 2 ore','2–4 ore','4–6 ore','Peste 6 ore']} value={time} setValue={setTime} onNext={() => setStep(3)} onBack={() => setStep(1)} />}{step === 3 && <ChoiceStep title="Ce tip de peisaj cauți?" options={['panorame','lacuri glaciare','creste','păduri','cascade','vârfuri']} value={landscape} setValue={setLandscape} onNext={() => setStep(4)} onBack={() => setStep(2)} />}{step === 4 && <ChoiceStep title="Ai o dificultate preferată?" options={['ușor','mediu','dificil']} value={difficulty} setValue={(v) => setDifficulty(v as Difficulty)} onNext={() => {}} onBack={() => setStep(3)} optional />}</div>{step === 4 && <div className="recommendation-results"><div className="results-bar"><strong>{results.length} potriviri pentru tine</strong><button className="text-button" onClick={() => setStep(1)}>Modifică răspunsurile</button></div>{results.length ? results.map(({ trail, score }) => <div className="recommendation-card" key={trail.id}><img src={trail.images[0]} alt={trail.name} /><div><span className="eyebrow">{trail.mountainRange} · potrivire {Math.min(99, 65 + score * 5)}%</span><h3>{trail.name}</h3><p>Potrivit pentru nivelul tău, cu o durată de {trail.durationLabel} și o diferență de nivel de +{trail.elevationGain} m.</p><Link className="text-link" to={`/trasee/${trail.slug}`}>Vezi detalii <ArrowRight size={15} /></Link></div></div>) : <div className="empty-state"><h3>Nu am găsit o potrivire perfectă</h3><p>Încearcă să relaxezi unul dintre criterii. Îți arătăm în continuare opțiuni apropiate.</p></div>}</div>}</div></main>;
+}
+
+function ChoiceStep({ title, options, labels, value, setValue, onNext, onBack, optional }: { title: string; options: string[]; labels?: string[]; value: string; setValue: (v: string) => void; onNext: () => void; onBack?: () => void; optional?: boolean }) { return <div className="choice-step"><span className="step-label">PASUL {onBack ? 2 : 1} DIN 4</span><h2>{title}</h2>{optional && <p className="muted">Opțional — poți alege mai multe criterii în explorare.</p>}<div className="choice-grid">{options.map((option, i) => <button key={option} className={value === option ? 'choice selected' : 'choice'} onClick={() => setValue(option)}><span>{labels?.[i] || option}</span>{value === option && <Check size={17} />}</button>)}</div><div className="wizard-actions">{onBack && <button className="button outline" onClick={onBack}>Înapoi</button>}<button className="button dark" disabled={!value} onClick={onNext}>{optional ? 'Vezi recomandările' : 'Continuă'} <ArrowRight size={16} /></button></div></div>; }
+
+function AboutPage() { return <main className="page-shell about-page"><div className="page-heading"><div><span className="kicker">DESPRE PROIECT</span><h1>Mai aproape de<br /><em>munte.</em></h1></div><p>Ghid Montan este un proiect universitar despre design de interfață, informație utilă și respect pentru natură.</p></div><div className="about-grid"><section><img className="about-image" src={mountainTrails[1].images[1]} alt="Potecă prin pădure" /><span className="image-caption">Piatra Craiului · România</span></section><section className="about-copy"><h2>De ce Ghid Montan?</h2><p>Atunci când alegi un traseu, frumusețea priveliștii este doar începutul. Contează timpul, nivelul de efort, accesul și echipamentul potrivit.</p><p>Am creat acest ghid pentru a pune informațiile esențiale într-o formă clară, calmă și ușor de folosit, de la primul click până la planificarea turei.</p><div className="values"><div><strong>01</strong><span><b>Claritate</b><small>Informații esențiale, fără zgomot.</small></span></div><div><strong>02</strong><span><b>Responsabilitate</b><small>Nu promitem condiții în timp real.</small></span></div><div><strong>03</strong><span><b>Accesibilitate</b><small>O interfață pentru orice drumeț.</small></span></div></div></section></div><section className="contact-section" id="contact"><div><span className="kicker">AI O ÎNTREBARE?</span><h2>Hai să ținem<br /><em>legătura.</em></h2><p>Acesta este un formular demonstrativ pentru proiectul universitar. Datele nu sunt trimise fără configurarea unui server SMTP.</p></div><ContactPage /></section></main>; }
+
+export default function App() {
+  const [dark, setDark] = useState(() => localStorage.getItem('ghid-theme') === 'dark');
+  const [help, setHelp] = useState(false);
+  const [analyticsConsent, setAnalyticsConsent] = useState(() => localStorage.getItem('ga-consent') === 'granted');
+  useEffect(() => { document.documentElement.dataset.theme = dark ? 'dark' : 'light'; localStorage.setItem('ghid-theme', dark ? 'dark' : 'light'); }, [dark]);
+  useEffect(() => {
+    const id = import.meta.env.VITE_GA_MEASUREMENT_ID;
+    if (!id || !analyticsConsent || document.querySelector('[data-ghid-analytics]')) return;
+    const script = document.createElement('script'); script.async = true; script.src = `https://www.googletagmanager.com/gtag/js?id=${id}`; script.dataset.ghidAnalytics = 'true';
+    document.head.appendChild(script);
+    const config = document.createElement('script'); config.dataset.ghidAnalytics = 'true'; config.text = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','${id}',{anonymize_ip:true});`;
+    document.head.appendChild(config);
+  }, [analyticsConsent]);
+  const acceptAnalytics = () => { localStorage.setItem('ga-consent', 'granted'); setAnalyticsConsent(true); };
+  return <div className="app"><Header dark={dark} setDark={setDark} /><Routes><Route path="/" element={<HomePage />} /><Route path="/trasee" element={<ExplorePage />} /><Route path="/trasee/:slug" element={<DetailPage />} /><Route path="/recomandari" element={<RecommendationsPage />} /><Route path="/asistent" element={<main className="page-shell assistant-page"><div className="page-heading"><div><span className="kicker">GHIDUL TĂU DIGITAL</span><h1>Spune-ne ce<br /><em>îți dorești.</em></h1></div><p>Asistentul demonstrativ folosește baza locală de trasee și reguli transparente. Nu este conectat la un model extern fără configurare.</p></div><Assistant /></main>} /><Route path="/despre" element={<AboutPage />} /></Routes><Footer /><FloatingTools help={help} setHelp={setHelp} />{import.meta.env.VITE_GA_MEASUREMENT_ID && !analyticsConsent && <div className="consent-banner"><span>Folosim Analytics doar cu acordul tău, pentru a înțelege cum este folosit site-ul.</span><button className="button dark" onClick={acceptAnalytics}>Accept</button></div>}</div>;
 }
